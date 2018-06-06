@@ -28,6 +28,7 @@ import akka.actor.ActorSystem;
 import akka.japi.pf.ReceiveBuilder;
 import io.beethoven.dsl.Task;
 import io.beethoven.repository.WorkflowRepository;
+import io.beethoven.service.TaskExecutorService;
 import io.beethoven.service.TaskService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -52,6 +53,9 @@ public class TaskActor extends AbstractLoggingActor {
     @Autowired
     private TaskService taskService;
 
+    @Autowired
+    private TaskExecutorService taskExecutorService;
+
     @Override
     public Receive createReceive() {
         Receive receive = ReceiveBuilder.create()
@@ -64,7 +68,7 @@ public class TaskActor extends AbstractLoggingActor {
     private void onStartTaskCommand(StartTaskCommand startTaskCommand) {
         log().debug("onStartTaskCommand: " + startTaskCommand);
         Task task = taskService.findByName(startTaskCommand.workflowName, startTaskCommand.taskName);
-        taskService.execute(task, startTaskCommand.workflowInstanceName);
+        taskExecutorService.execute(task, startTaskCommand.workflowInstanceName);
     }
 
 
