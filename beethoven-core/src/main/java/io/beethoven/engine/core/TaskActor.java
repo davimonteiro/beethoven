@@ -24,10 +24,8 @@ package io.beethoven.engine.core;
 
 
 import akka.actor.AbstractLoggingActor;
-import akka.actor.ActorSystem;
 import akka.japi.pf.ReceiveBuilder;
 import io.beethoven.dsl.Task;
-import io.beethoven.repository.WorkflowRepository;
 import io.beethoven.service.TaskExecutorService;
 import io.beethoven.service.TaskService;
 import lombok.AllArgsConstructor;
@@ -36,12 +34,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import scala.concurrent.duration.Duration;
-
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import static akka.actor.ActorRef.noSender;
 
 /**
  * @author Davi Monteiro
@@ -70,7 +62,6 @@ public class TaskActor extends AbstractLoggingActor {
         Task task = taskService.findByName(startTaskCommand.workflowName, startTaskCommand.taskName);
         taskExecutorService.execute(task, startTaskCommand.workflowInstanceName);
     }
-
 
     /**
      * ****************************************************************************

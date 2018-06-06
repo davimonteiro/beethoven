@@ -25,11 +25,19 @@ package io.beethoven.engine.core;
 
 import akka.actor.AbstractLoggingActor;
 import akka.japi.pf.ReceiveBuilder;
+import io.beethoven.engine.TaskInstance;
+import io.beethoven.engine.WorkflowInstance;
+import io.beethoven.repository.ContextualInputRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Davi Monteiro
@@ -37,6 +45,11 @@ import org.springframework.stereotype.Component;
 @Component(ActorName.REPORTER_ACTOR)
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class ReporterActor extends AbstractLoggingActor {
+
+    @Autowired
+    private ContextualInputRepository contextualInputRepository;
+
+    private Map<String, WorkflowInstance> instances = new ConcurrentHashMap();
 
     @Override
     public Receive createReceive() {
@@ -62,51 +75,67 @@ public class ReporterActor extends AbstractLoggingActor {
 
     private void onReportWorkflowScheduledEvent(ReportWorkflowScheduledEvent reportWorkflowScheduledEvent) {
         log().debug("onReportWorkflowScheduledEvent: " + reportWorkflowScheduledEvent);
+        instances.put(reportWorkflowScheduledEvent.getInstanceName(), new WorkflowInstance());
         report(reportWorkflowScheduledEvent);
     }
 
     private void onReportWorkflowStartedEvent(ReportWorkflowStartedEvent reportWorkflowStartedEvent) {
         log().debug("onReportWorkflowStartedEvent: " + reportWorkflowStartedEvent);
+        instances.get(reportWorkflowStartedEvent.getInstanceName()).setStartTime(LocalDateTime.now());
         report(reportWorkflowStartedEvent);
     }
 
     private void onReportWorkflowStoppedEvent(ReportWorkflowStoppedEvent reportWorkflowStoppedEvent) {
         log().debug("onReportWorkflowStoppedEvent: " + reportWorkflowStoppedEvent);
+        instances.get(reportWorkflowStoppedEvent.getInstanceName()).setEndTime(LocalDateTime.now());
         report(reportWorkflowStoppedEvent);
     }
 
     private void onReportWorkflowCompletedEvent(ReportWorkflowCompletedEvent reportWorkflowCompletedEvent) {
         log().debug("onReportWorkflowCompletedEvent: " + reportWorkflowCompletedEvent);
+        instances.get(reportWorkflowCompletedEvent.getInstanceName()).setEndTime(LocalDateTime.now());
         report(reportWorkflowCompletedEvent);
     }
 
     private void onReportWorkflowCanceledEvent(ReportWorkflowCanceledEvent reportWorkflowCanceledEvent) {
         log().debug("onReportWorkflowCanceledEvent: " + reportWorkflowCanceledEvent);
+        instances.get(reportWorkflowCanceledEvent.getInstanceName()).setEndTime(LocalDateTime.now());
         report(reportWorkflowCanceledEvent);
     }
 
     private void onReportWorkflowFailedEvent(ReportWorkflowFailedEvent reportWorkflowFailedEvent) {
         log().debug("onReportWorkflowFailedEvent: " + reportWorkflowFailedEvent);
+        instances.get(reportWorkflowFailedEvent.getInstanceName()).setEndTime(LocalDateTime.now());
         report(reportWorkflowFailedEvent);
     }
 
     private void onReportTaskStartedEvent(ReportTaskStartedEvent reportTaskStartedEvent) {
         log().debug("onReportTaskStartedEvent: ", reportTaskStartedEvent);
+        instances.get(reportTaskStartedEvent.getWorkflowInstanceName())
+                .getTasks().put(reportTaskStartedEvent.getTaskInstanceName(), new TaskInstance());
+        instances.get(reportTaskStartedEvent.getWorkflowInstanceName())
+                .getTasks().get(reportTaskStartedEvent.getTaskInstanceName()).setStartTime(LocalDateTime.now());
         report(reportTaskStartedEvent);
     }
 
     private void onReportTaskCompletedEvent(ReportTaskCompletedEvent reportTaskCompletedEvent) {
         log().debug("onReportTaskCompletedEvent: ", reportTaskCompletedEvent);
+        instances.get(reportTaskCompletedEvent.getWorkflowInstanceName())
+                .getTasks().get(reportTaskCompletedEvent.getTaskInstanceName()).setEndTime(LocalDateTime.now());
         report(reportTaskCompletedEvent);
     }
 
     private void onReportTaskTimeoutEvent(ReportTaskTimeoutEvent reportTaskTimeoutEvent) {
         log().debug("onReportTaskTimeoutEvent", reportTaskTimeoutEvent);
+        instances.get(reportTaskTimeoutEvent.getWorkflowInstanceName())
+                .getTasks().get(reportTaskTimeoutEvent.getTaskInstanceName()).setEndTime(LocalDateTime.now());
         report(reportTaskTimeoutEvent);
     }
 
     private void onReportTaskFailedEvent(ReportTaskFailedEvent reportTaskFailedEvent) {
         log().debug("onReportTaskFailedEvent", reportTaskFailedEvent);
+        instances.get(reportTaskFailedEvent.getWorkflowInstanceName())
+                .getTasks().get(reportTaskFailedEvent.getTaskInstanceName()).setEndTime(LocalDateTime.now());
         report(reportTaskFailedEvent);
     }
 
@@ -181,8 +210,8 @@ public class ReporterActor extends AbstractLoggingActor {
     public static abstract class ReportTaskEvent {
         private String taskName;
         private String taskInstanceName;
-        private String workflowInstanceName;
         private String workflowName;
+        private String workflowInstanceName;
     }
 
     public static class ReportTaskStartedEvent extends ReportTaskEvent {

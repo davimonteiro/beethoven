@@ -58,7 +58,7 @@ public class WorkflowActor extends AbstractLoggingActor {
 
     private void onScheduleWorkflowCommand(ScheduleWorkflowCommand scheduleWorkflowCommand) {
         log().debug("onScheduleWorkflowCommand: " + scheduleWorkflowCommand);
-        String instanceName = genareteInstanceName(scheduleWorkflowCommand.workflowName);
+        String instanceName = generateInstanceName(scheduleWorkflowCommand.workflowName);
         getContext().actorOf(WorkflowInstanceActor.props(), instanceName);
 
         forwardCommand(new WorkflowInstanceActor.CreateWorkflowInstanceCommand(scheduleWorkflowCommand.workflowName,
@@ -87,7 +87,7 @@ public class WorkflowActor extends AbstractLoggingActor {
         getContext().findChild(actorName).ifPresent(child -> child.forward(command, getContext()));
     }
 
-    private String genareteInstanceName(String workflowName) {
+    private String generateInstanceName(String workflowName) {
         return workflowName + "-" + count.incrementAndGet();
     }
 

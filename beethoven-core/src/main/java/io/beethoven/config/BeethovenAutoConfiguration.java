@@ -32,12 +32,12 @@ import io.beethoven.api.HandlerResource;
 import io.beethoven.api.MetricsResource;
 import io.beethoven.api.TaskResource;
 import io.beethoven.api.WorkflowResource;
-import io.beethoven.repository.WorkflowInstanceRepository;
+import io.beethoven.repository.ContextualInputRepository;
 import io.beethoven.repository.WorkflowRepository;
 import io.beethoven.service.HandlerService;
+import io.beethoven.service.TaskExecutorService;
 import io.beethoven.service.TaskService;
 import io.beethoven.service.WorkflowService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -58,9 +58,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 @EnableConfigurationProperties(BeethovenProperties.class)
 @Import(AkkaConfiguration.class)
 public class BeethovenAutoConfiguration {
-
-    @Autowired
-    private BeethovenProperties beethovenProperties;
 
     @Bean
     @LoadBalanced
@@ -113,8 +110,8 @@ public class BeethovenAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public WorkflowInstanceRepository workflowInstanceRepository() {
-        return new WorkflowInstanceRepository();
+    public ContextualInputRepository contextualInputRepository() {
+        return new ContextualInputRepository();
     }
 
     @Bean
@@ -133,6 +130,12 @@ public class BeethovenAutoConfiguration {
     @ConditionalOnMissingBean
     public TaskService taskService() {
         return new TaskService();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TaskExecutorService taskExecutorService() {
+        return new TaskExecutorService();
     }
 
     @Bean

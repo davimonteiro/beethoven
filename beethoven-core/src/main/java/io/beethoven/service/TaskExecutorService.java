@@ -25,7 +25,9 @@ package io.beethoven.service;
 import akka.actor.ActorSystem;
 import io.beethoven.dsl.*;
 import io.beethoven.engine.TaskInstance;
+import io.beethoven.engine.core.ActorPath;
 import io.beethoven.engine.core.DeciderActor;
+import io.beethoven.engine.core.ReporterActor;
 import io.beethoven.repository.ContextualInputRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static akka.actor.ActorRef.noSender;
+import static io.beethoven.engine.core.ActorPath.*;
 import static io.beethoven.engine.core.ActorPath.DECIDER_ACTOR;
 import static org.springframework.web.reactive.function.BodyInserters.fromObject;
 
@@ -59,31 +62,36 @@ public class TaskExecutorService {
     public void execute(Task task, String workflowInstanceName) {
         TaskInstance taskInstance = buildTaskInstance(task);
 
-        // Prepare a http request
+        // Build a http request
         WebClient.RequestHeadersSpec request = buildHttpRequest(task.getHttpRequest(), task.getWorkflowName(), workflowInstanceName);
 
-        // Peform the request
+        // Perform the request
         request.retrieve().bodyToFlux(String.class)
                 .subscribe(
                         response -> handleSuccessResponse(task, workflowInstanceName, taskInstance, response),
                         throwable -> handleFailureResponse(task, workflowInstanceName, taskInstance, throwable));
+
+        sendEvent(new DeciderActor.TaskStartedEvent(task.getName(), workflowInstanceName, task.getWorkflowName()));
+        sendEvent(new ReporterActor.ReportTaskStartedEvent(task.getName(), taskInstance.getTaskInstanceName(), task.getWorkflowName(), workflowInstanceName));
     }
 
     private void handleSuccessResponse(Task task, String workflowInstanceName, TaskInstance taskInstance, String response) {
         taskInstance.setResponse(response);
         contextualInputRepository.saveLocalInput(workflowInstanceName, buildContextualInput(taskInstance));
         sendEvent(new DeciderActor.TaskCompletedEvent(task.getName(), workflowInstanceName, task.getWorkflowName()));
-    }
-
-    private ContextualInput buildContextualInput(TaskInstance taskInstance) {
-        String contexInputKey = "${" + taskInstance.getTaskName() + ".response}";
-        return new ContextualInput(contexInputKey, taskInstance.getResponse());
+        sendEvent(new ReporterActor.ReportTaskCompletedEvent(task.getName(), taskInstance.getTaskInstanceName(), task.getWorkflowName(), workflowInstanceName));
     }
 
     private void handleFailureResponse(Task task, String workflowInstanceName, TaskInstance taskInstance, Throwable throwable) {
         taskInstance.setFailure(throwable);
         contextualInputRepository.saveLocalInput(workflowInstanceName, buildContextualInput(taskInstance));
         sendEvent(new DeciderActor.TaskFailedEvent(task.getName(), taskInstance.getTaskInstanceName(), task.getWorkflowName()));
+        sendEvent(new ReporterActor.ReportTaskFailedEvent(task.getName(), taskInstance.getTaskInstanceName(), task.getWorkflowName(), workflowInstanceName));
+    }
+
+    private ContextualInput buildContextualInput(TaskInstance taskInstance) {
+        String inputKey = "${" + taskInstance.getTaskName() + ".response}";
+        return new ContextualInput(inputKey, taskInstance.getResponse());
     }
 
     private WebClient.RequestHeadersSpec buildHttpRequest(HttpRequest httpRequest, String workflowName, String workflowInstanceName) {
@@ -211,6 +219,10 @@ public class TaskExecutorService {
 
     private void sendEvent(DeciderActor.TaskEvent taskEvent) {
         actorSystem.actorSelection(DECIDER_ACTOR).tell(taskEvent, noSender());
+    }
+
+    private void sendEvent(ReporterActor.ReportTaskEvent reportTaskEvent) {
+        actorSystem.actorSelection(REPORT_ACTOR).tell(reportTaskEvent, noSender());
     }
 
 }

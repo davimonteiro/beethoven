@@ -24,7 +24,6 @@ package io.beethoven.engine.core.support;
 
 
 import akka.actor.AbstractLoggingActor;
-import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.japi.pf.ReceiveBuilder;
@@ -36,6 +35,7 @@ import io.beethoven.engine.core.ReporterActor;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import static akka.actor.ActorRef.noSender;
 import static io.beethoven.engine.WorkflowInstance.WorkflowStatus.*;
 
 public class WorkflowInstanceActor extends AbstractLoggingActor {
@@ -107,13 +107,12 @@ public class WorkflowInstanceActor extends AbstractLoggingActor {
         sendEvent(new ReporterActor.ReportWorkflowFailedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
     }
 
-
     private void sendEvent(DeciderActor.WorkflowEvent workflowEvent) {
-        actorSystem.actorSelection(ActorPath.DECIDER_ACTOR).tell(workflowEvent, ActorRef.noSender());
+        actorSystem.actorSelection(ActorPath.DECIDER_ACTOR).tell(workflowEvent, noSender());
     }
 
     private void sendEvent(ReporterActor.ReportWorkflowEvent reportWorkflowEvent) {
-        actorSystem.actorSelection(ActorPath.REPORT_ACTOR).tell(reportWorkflowEvent, ActorRef.noSender());
+        actorSystem.actorSelection(ActorPath.REPORT_ACTOR).tell(reportWorkflowEvent, noSender());
     }
 
     @Data
