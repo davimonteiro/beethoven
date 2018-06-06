@@ -22,6 +22,7 @@
  */
 package io.beethoven.api;
 
+import io.beethoven.api.dto.BeethovenOperation;
 import io.beethoven.dsl.Workflow;
 import io.beethoven.service.WorkflowService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,7 @@ public class WorkflowResource {
     @Autowired
     private WorkflowService workflowService;
 
+
     //--------------------- POST methods -------------------- //
 
     @PostMapping
@@ -52,12 +54,18 @@ public class WorkflowResource {
         return ok(createdWorkflow);
     }
 
+    @PostMapping(value = "/{workflowName}/operations")
+    public ResponseEntity send(@PathVariable String workflowName, @RequestBody BeethovenOperation operation) {
+        workflowService.execute(workflowName, operation);
+        return ok().build();
+    }
+
     //------------------------------------------------------------ //
 
 
     //------------------- GET methods ------------------ //
 
-    @GetMapping//(produces = APPLICATION_JSON_VALUE)
+    @GetMapping(produces = APPLICATION_JSON_VALUE)
     public ResponseEntity findAllWorflows() {
         List<Workflow> result = workflowService.findAll();
         return ok(result);

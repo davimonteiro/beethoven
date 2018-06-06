@@ -22,34 +22,12 @@
  */
 package io.beethoven.repository;
 
-import io.beethoven.engine.TaskInstance;
 import org.springframework.stereotype.Repository;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Davi Monteiro
  */
 @Repository
 public class WorkflowInstanceRepository {
-
-    private Map<String, Map<String, TaskInstance>> instances = new ConcurrentHashMap<>();
-
-    public void save(String workflowInstance, TaskInstance taskInstance) {
-        if (!contains(workflowInstance)) {
-            instances.put(workflowInstance, new ConcurrentHashMap<>());
-        }
-        String contexInput = "${" + taskInstance.getTaskName() + ".response}";
-        instances.get(workflowInstance).put(contexInput, taskInstance);
-    }
-
-    private boolean contains(String workflowInstance) {
-        return instances.containsKey(workflowInstance);
-    }
-
-    public TaskInstance findTaskInstanceByName(String workflowInstance, String contexInput) {
-        return instances.get(workflowInstance).get(contexInput);
-    }
 
 }

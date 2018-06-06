@@ -22,12 +22,23 @@
  */
 package io.beethoven.service;
 
+import akka.actor.ActorSystem;
+import io.beethoven.api.dto.BeethovenOperation;
+import io.beethoven.api.dto.BeethovenOperation.Operation;
 import io.beethoven.dsl.Workflow;
+import io.beethoven.engine.core.WorkflowActor.CancelWorkflowCommand;
+import io.beethoven.engine.core.WorkflowActor.ScheduleWorkflowCommand;
+import io.beethoven.engine.core.WorkflowActor.StartWorkflowCommand;
+import io.beethoven.engine.core.WorkflowActor.StopWorkflowCommand;
+import io.beethoven.repository.ContextualInputRepository;
 import io.beethoven.repository.WorkflowRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
+import static akka.actor.ActorRef.noSender;
+import static io.beethoven.engine.core.ActorPath.WORKFLOW_ACTOR;
 
 /**
  * @author Davi Monteiro
@@ -37,6 +48,35 @@ public class WorkflowService {
 
     @Autowired
     private WorkflowRepository workflowRepository;
+
+    @Autowired
+    private ContextualInputRepository contextualInputRepository;
+
+    @Autowired
+    private ActorSystem actorSystem;
+
+    public void execute(String workflowName, BeethovenOperation operation) {
+        contextualInputRepository.saveGlobalInputs(workflowName, operation.getInputs());
+        switch (Operation.findById(operation.getOperation())) {
+            case SCHEDULE:
+                actorSystem.actorSelection(WORKFLOW_ACTOR)
+                        .tell(new ScheduleWorkflowCommand(workflowName), noSender());
+                break;
+            case START:
+                System.out.println();
+                actorSystem.actorSelection(WORKFLOW_ACTOR)
+                        .tell(new StartWorkflowCommand(workflowName, operation.getInstanceName()), noSender());
+                break;
+            case STOP:
+                actorSystem.actorSelection(WORKFLOW_ACTOR)
+                        .tell(new StopWorkflowCommand(workflowName, operation.getInstanceName()), noSender());
+                break;
+            case CANCEL:
+                actorSystem.actorSelection(WORKFLOW_ACTOR)
+                        .tell(new CancelWorkflowCommand(workflowName, operation.getInstanceName()), noSender());
+                break;
+        }
+    }
 
     public Workflow save(Workflow workflow) {
         workflowRepository.save(workflow);
