@@ -53,14 +53,14 @@ public class HandlerResource {
 
     @GetMapping(produces = APPLICATION_JSON_VALUE)
     public ResponseEntity findAllHandlers(@PathVariable String workflowName) {
-        Set<Handler> handlers = handlerService.findAll(workflowName);
+        Set<Handler> handlers = handlerService.findAllByWorkflowName(workflowName);
         return ok(handlers);
     }
 
     @GetMapping(value = "/{handlerName}", produces = APPLICATION_JSON_VALUE)
     public ResponseEntity findHandlerByName(@PathVariable String workflowName,
                                             @PathVariable String handlerName) {
-        Handler handler = handlerService.findByName(workflowName, handlerName);
+        Handler handler = handlerService.findByWorkflowNameAndHandlerName(workflowName, handlerName);
         return ok(handler);
     }
 
