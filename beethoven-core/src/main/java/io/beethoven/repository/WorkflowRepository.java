@@ -23,15 +23,15 @@
 package io.beethoven.repository;
 
 import io.beethoven.dsl.Workflow;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.util.Objects.*;
+import static java.util.Objects.requireNonNull;
 
 /**
  * @author Davi Monteiro
@@ -40,6 +40,9 @@ import static java.util.Objects.*;
 public class WorkflowRepository {
 
     private Map<String, Workflow> workflows = new ConcurrentHashMap<>();
+
+    @Autowired
+    private ContextualInputRepository contextualInputRepository;
 
     public void save(Workflow workflow) {
         requireNonNull(workflow);
@@ -63,6 +66,7 @@ public class WorkflowRepository {
     public void delete(String name) {
         requireNonNull(name);
         workflows.remove(name);
+        contextualInputRepository.deleteGlobalContextualInput(name);
     }
 
 }
