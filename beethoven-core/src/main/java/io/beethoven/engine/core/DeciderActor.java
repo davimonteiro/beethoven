@@ -129,7 +129,7 @@ public class DeciderActor extends AbstractLoggingActor {
     }
 
     private void decide(TaskEvent taskEvent, EventType eventType) {
-        List<Handler> events = handlerService.find(taskEvent.getWorkflowName(), eventType);
+        List<Handler> events = handlerService.findByWorkflowNameAndEventType(taskEvent.getWorkflowName(), eventType);
         for (Handler event : events) {
             event.getConditions().forEach(condition -> condition.setCurrentlValues(taskEvent));
             event.getCommands().forEach(command -> command.setWorkflowName(taskEvent.workflowName));
@@ -138,7 +138,7 @@ public class DeciderActor extends AbstractLoggingActor {
     }
 
     private void decide(WorkflowEvent workflowEvent, EventType eventType) {
-        List<Handler> events = handlerService.find(workflowEvent.getWorkflowName(), eventType);
+        List<Handler> events = handlerService.findByWorkflowNameAndEventType(workflowEvent.getWorkflowName(), eventType);
         for (Handler event : events) {
             event.getConditions().forEach(condition -> condition.setCurrentlValues(workflowEvent));
             event.getCommands().forEach(command -> command.setWorkflowName(workflowEvent.workflowName));
@@ -157,7 +157,6 @@ public class DeciderActor extends AbstractLoggingActor {
         for (Condition condition : conditions) {
             result = result && condition.evaluate();
         }
-
         return result;
     }
 
@@ -206,34 +205,35 @@ public class DeciderActor extends AbstractLoggingActor {
     @Data
     @AllArgsConstructor
     public static abstract class TaskEvent {
-        private String taskName;
-        private String workflowInstanceName;
         private String workflowName;
+        private String workflowInstanceName;
+        private String taskName;
     }
 
     public static class TaskStartedEvent extends TaskEvent {
-        public TaskStartedEvent(String taskName, String workflowInstanceName, String workflowName) {
-            super(taskName, workflowInstanceName, workflowName);
+        public TaskStartedEvent(String workflowName, String workflowInstanceName, String taskName) {
+            super(workflowName, workflowInstanceName, taskName);
         }
     }
 
     public static class TaskCompletedEvent extends TaskEvent {
-        public TaskCompletedEvent(String taskName, String workflowInstanceName, String workflowName) {
-            super(taskName, workflowInstanceName, workflowName);
+        public TaskCompletedEvent(String workflowName, String workflowInstanceName, String taskName) {
+            super(workflowName, workflowInstanceName, taskName);
         }
     }
 
     public static class TaskTimeoutEvent extends TaskEvent {
-        public TaskTimeoutEvent(String taskName, String workflowInstanceName, String workflowName) {
-            super(taskName, workflowInstanceName, workflowName);
+        public TaskTimeoutEvent(String workflowName, String workflowInstanceName, String taskName) {
+            super(workflowName, workflowInstanceName, taskName);
         }
     }
 
     public static class TaskFailedEvent extends TaskEvent {
-        public TaskFailedEvent(String taskName, String workflowInstanceName, String workflowName) {
-            super(taskName, workflowInstanceName, workflowName);
+        public TaskFailedEvent(String workflowName, String workflowInstanceName, String taskName) {
+            super(workflowName, workflowInstanceName, taskName);
         }
     }
+
     /*******************************************************************************/
 
 
