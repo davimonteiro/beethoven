@@ -65,46 +65,45 @@ public class WorkflowInstanceActor extends AbstractLoggingActor {
 
     public void onCreateWorkflowInstance(CreateWorkflowInstanceCommand createWorkflowInstance) {
         log().debug("onCreateWorkflowInstance: " + createWorkflowInstance);
-        this.workflowInstance = new WorkflowInstance();
-        this.workflowInstance.setWorkflowName(createWorkflowInstance.getWorkflowName());
-        this.workflowInstance.setInstanceName(createWorkflowInstance.getInstanceName());
-        sendEvent(new DeciderActor.WorkflowScheduledEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
-        sendEvent(new ReporterActor.ReportWorkflowScheduledEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
+        this.workflowInstance = new WorkflowInstance(createWorkflowInstance);
+        this.workflowInstance.setStatus(SCHEDULED);
+        sendEvent(new DeciderActor.WorkflowScheduledEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
+        sendEvent(new ReporterActor.ReportWorkflowScheduledEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
     }
 
     public void onStartWorkflowInstanceCommand(StartWorkflowInstanceCommand startWorkflowInstanceCommand) {
         log().debug("onStartWorkflowInstanceCommand: " + startWorkflowInstanceCommand);
         this.workflowInstance.setStatus(RUNNING);
-        sendEvent(new DeciderActor.WorkflowStartedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
-        sendEvent(new ReporterActor.ReportWorkflowStartedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
+        sendEvent(new DeciderActor.WorkflowStartedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
+        sendEvent(new ReporterActor.ReportWorkflowStartedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
     }
 
     public void onStopWorkflowInstanceCommand(StopWorkflowInstanceCommand stopWorkflowInstanceCommand) {
         log().debug("onStopWorkflowInstanceCommand: " + stopWorkflowInstanceCommand);
         this.workflowInstance.setStatus(PAUSED);
-        sendEvent(new DeciderActor.WorkflowStoppedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
-        sendEvent(new ReporterActor.ReportWorkflowStoppedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
+        sendEvent(new DeciderActor.WorkflowStoppedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
+        sendEvent(new ReporterActor.ReportWorkflowStoppedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
     }
 
     public void onCompletedWorkflowInstanceEvent(CompletedWorkflowInstanceEvent completedWorkflowInstanceEvent) {
         log().debug("onCompletedWorkflowInstanceEvent: " + completedWorkflowInstanceEvent);
         this.workflowInstance.setStatus(COMPLETED);
-        sendEvent(new DeciderActor.WorkflowCompletedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
-        sendEvent(new ReporterActor.ReportWorkflowCompletedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
+        sendEvent(new DeciderActor.WorkflowCompletedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
+        sendEvent(new ReporterActor.ReportWorkflowCompletedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
     }
 
     public void onCancelWorkflowInstanceCommand(CancelWorkflowInstanceCommand cancelWorkflowInstanceCommand) {
         log().debug("onCancelWorkflowInstanceCommand: " + cancelWorkflowInstanceCommand);
         this.workflowInstance.setStatus(CANCELLED);
-        sendEvent(new DeciderActor.WorkflowCanceledEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
-        sendEvent(new ReporterActor.ReportWorkflowCanceledEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
+        sendEvent(new DeciderActor.WorkflowCanceledEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
+        sendEvent(new ReporterActor.ReportWorkflowCanceledEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
     }
 
     public void onFailedWorkflowInstanceEvent(FailedWorkflowInstanceEvent failedWorkflowInstanceEvent) {
         log().debug("onFailedWorkflowInstanceEvent: " + failedWorkflowInstanceEvent);
         this.workflowInstance.setStatus(FAILED);
-        sendEvent(new DeciderActor.WorkflowFailedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
-        sendEvent(new ReporterActor.ReportWorkflowFailedEvent(workflowInstance.getWorkflowName(), workflowInstance.getInstanceName()));
+        sendEvent(new DeciderActor.WorkflowFailedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
+        sendEvent(new ReporterActor.ReportWorkflowFailedEvent(workflowInstance.getWorkflowName(), workflowInstance.getWorkflowInstanceName()));
     }
 
     private void sendEvent(DeciderActor.WorkflowEvent workflowEvent) {
@@ -115,11 +114,18 @@ public class WorkflowInstanceActor extends AbstractLoggingActor {
         actorSystem.actorSelection(ActorPath.REPORT_ACTOR).tell(reportWorkflowEvent, noSender());
     }
 
+    /**
+     * *****************************************************************************
+     * <p/>
+     * Workflow commands
+     * <p/>
+     * *****************************************************************************
+     */
     @Data
     @AllArgsConstructor
     public static abstract class WorkflowInstanceCommand {
         private String workflowName;
-        private String instanceName;
+        private String workflowInstanceName;
     }
 
     public static class CreateWorkflowInstanceCommand extends WorkflowInstanceCommand {
@@ -146,7 +152,6 @@ public class WorkflowInstanceActor extends AbstractLoggingActor {
         }
     }
 
-
     public static class CompletedWorkflowInstanceEvent extends WorkflowInstanceCommand {
         public CompletedWorkflowInstanceEvent(String workflowName, String instanceName) {
             super(workflowName, instanceName);
@@ -158,6 +163,7 @@ public class WorkflowInstanceActor extends AbstractLoggingActor {
             super(workflowName, instanceName);
         }
     }
+    /*******************************************************************************/
 
 
     public static Props props() {
