@@ -22,9 +22,13 @@
  */
 package io.beethoven.engine;
 
+import io.beethoven.engine.core.ReporterActor;
 import lombok.Data;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+
+import static java.util.Objects.nonNull;
 
 /**
  * @author Davi Monteiro
@@ -32,11 +36,36 @@ import java.time.LocalDateTime;
 @Data
 public class TaskInstance {
 
+    private String workflowName;
+    private String workflowInstanceName;
     private String taskName;
     private String taskInstanceName;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String response;
     private Throwable failure;
+
+    public TaskInstance() { }
+
+    public TaskInstance(ReporterActor.ReportTaskEvent reportTaskEvent) {
+        this.workflowName = reportTaskEvent.getWorkflowName();
+        this.workflowInstanceName = reportTaskEvent.getWorkflowInstanceName();
+        this.taskName = reportTaskEvent.getTaskName();
+        this.taskInstanceName = reportTaskEvent.getTaskInstanceName();
+    }
+
+    public Duration elapsedTime() {
+        Duration duration = Duration.between(startTime, endTime);
+        return duration.abs();
+    }
+
+    public boolean isTerminated() {
+        return nonNull(startTime) && nonNull(endTime);
+    }
+
+    public void print() {
+        System.err.println("Task instance name: " + taskInstanceName);
+        System.err.println("Execution time: " + elapsedTime().getSeconds() + " seconds");
+    }
 
 }
