@@ -44,7 +44,7 @@ public class HandlerService {
     @Autowired
     private WorkflowRepository workflowRepository;
 
-    public List<Handler> find(String workflowName, EventType eventType) {
+    public List<Handler> findByWorkflowNameAndEventType(String workflowName, EventType eventType) {
         Workflow workflow = workflowRepository.findByName(workflowName);
         List<Handler> handlers = workflow.getHandlers().stream()
                 .filter(handler -> handler.getEventType().equals(eventType))
@@ -57,12 +57,12 @@ public class HandlerService {
         return workflow.createHandler(handler);
     }
 
-    public Set<Handler> findAll(String workflowName) {
+    public Set<Handler> findAllByWorkflowName(String workflowName) {
         Workflow workflow = workflowRepository.findByName(workflowName);
         return workflow.getHandlers();
     }
 
-    public Handler findByName(String workflowName, String handlerName) {
+    public Handler findByWorkflowNameAndHandlerName(String workflowName, String handlerName) {
         Workflow workflow = workflowRepository.findByName(workflowName);
         return workflow.findHandlerByName(handlerName);
     }

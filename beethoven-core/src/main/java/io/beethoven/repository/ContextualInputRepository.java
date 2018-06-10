@@ -66,7 +66,6 @@ public class ContextualInputRepository {
 
     public Optional<ContextualInput> findLocalContextualInput(@NonNull String workflowInstanceName, @NonNull String key) {
         Set<ContextualInput> inputs = localInputs.get(workflowInstanceName);
-
         Optional<ContextualInput> contextualInput = null;
 
         if (inputs != null && !inputs.isEmpty()) {
