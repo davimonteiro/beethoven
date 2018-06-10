@@ -12,6 +12,7 @@
     <description>Demo project for Spring Boot</description>
 
     <modules>
+        <module>beethoven-app</module>
         <module>beethoven-core</module>
         <module>beethoven-starter</module>
     </modules>
