@@ -27,9 +27,12 @@ import lombok.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static java.util.Objects.*;
 
 /**
  * @author Davi Monteiro
@@ -46,11 +49,13 @@ public class ContextualInputRepository {
 
     public Optional<ContextualInput> findGlobalContextualInput(@NonNull String workflowName, String key) {
         Set<ContextualInput> inputs = globalInputs.get(workflowName);
-
-        Optional<ContextualInput> contextualInput = null;
+        Optional<ContextualInput> contextualInput = Optional.empty();
 
         if (inputs != null && !inputs.isEmpty()) {
-            contextualInput = inputs.stream().filter(input -> input.getKey().equals(key)).findFirst();
+            Optional<ContextualInput> first = inputs.stream().filter(input -> input.getKey().equals(key)).findFirst();
+            if (nonNull(first) && first.isPresent()) {
+                contextualInput = first;
+            }
         }
 
         return contextualInput;
@@ -66,10 +71,13 @@ public class ContextualInputRepository {
 
     public Optional<ContextualInput> findLocalContextualInput(@NonNull String workflowInstanceName, @NonNull String key) {
         Set<ContextualInput> inputs = localInputs.get(workflowInstanceName);
-        Optional<ContextualInput> contextualInput = null;
+        Optional<ContextualInput> contextualInput = Optional.empty();
 
         if (inputs != null && !inputs.isEmpty()) {
-            contextualInput = inputs.stream().filter(input -> input.getKey().equals(key)).findFirst();
+            Optional<ContextualInput> first = inputs.stream().filter(input -> input.getKey().equals(key)).findFirst();
+            if (nonNull(first) && first.isPresent()) {
+                contextualInput = first;
+            }
         }
 
         return contextualInput;
