@@ -32,6 +32,7 @@ import io.beethoven.repository.ContextualInputRepository;
 import io.beethoven.repository.WorkflowRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
@@ -180,11 +181,11 @@ public class ReporterActor extends AbstractLoggingActor {
         instances.remove(workflowInstance.getWorkflowInstanceName());
     }
 
-    // TODO Implement reporting for task events
     private void report(ReportTaskEvent reportTaskEvent) {
+        TaskInstance taskInstance = instances.get(reportTaskEvent.workflowInstanceName).getTasks().get(reportTaskEvent.taskInstanceName);
+        taskInstance.print();
     }
 
-    // TODO Implement reporting for workflow events
     private void report(ReportWorkflowEvent reportWorkflowEvent) {
         WorkflowInstance workflowInstance = instances.get(reportWorkflowEvent.workflowInstanceName);
         workflowInstance.print();
@@ -267,8 +268,10 @@ public class ReporterActor extends AbstractLoggingActor {
     }
 
     public static class ReportTaskCompletedEvent extends ReportTaskEvent {
-        public ReportTaskCompletedEvent(String workflowName, String workflowInstanceName, String taskName, String taskInstanceName) {
+        @Getter private String response;
+        public ReportTaskCompletedEvent(String workflowName, String workflowInstanceName, String taskName, String taskInstanceName, String response) {
             super(workflowName, workflowInstanceName, taskName, taskInstanceName);
+            this.response = response;
         }
     }
 
@@ -279,8 +282,10 @@ public class ReporterActor extends AbstractLoggingActor {
     }
 
     public static class ReportTaskFailedEvent extends ReportTaskEvent {
-        public ReportTaskFailedEvent(String workflowName, String workflowInstanceName, String taskName, String taskInstanceName) {
+        @Getter private Throwable failure;
+        public ReportTaskFailedEvent(String workflowName, String workflowInstanceName, String taskName, String taskInstanceName, Throwable failure) {
             super(workflowName, workflowInstanceName, taskName, taskInstanceName);
+            this.failure = failure;
         }
     }
     /*******************************************************************************/

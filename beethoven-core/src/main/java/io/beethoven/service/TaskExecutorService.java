@@ -60,40 +60,57 @@ public class TaskExecutorService {
     private ActorSystem actorSystem;
 
     public void execute(Task task, String workflowInstanceName) {
-        TaskInstance taskInstance = buildTaskInstance(task);
+        TaskInstance taskInstance = buildTaskInstance(task, workflowInstanceName);
 
         // Build a http request
-        WebClient.RequestHeadersSpec request = buildHttpRequest(task.getHttpRequest(), task.getWorkflowName(), workflowInstanceName);
+        WebClient.RequestHeadersSpec request = buildHttpRequest(
+                task.getHttpRequest(),
+                task.getWorkflowName(),
+                workflowInstanceName);
 
         // Perform the request
         request.retrieve().bodyToFlux(String.class)
                 .subscribe(
-                        response -> handleSuccessResponse(task, workflowInstanceName, taskInstance, response),
-                        throwable -> handleFailureResponse(task, workflowInstanceName, taskInstance, throwable));
+                        response -> handleSuccessResponse(
+                                taskInstance,
+                                response),
 
-        sendEvent(new DeciderActor.TaskStartedEvent(task.getName(), workflowInstanceName, task.getWorkflowName()));
-        sendEvent(new ReporterActor.ReportTaskStartedEvent(task.getName(), taskInstance.getTaskInstanceName(), task.getWorkflowName(), workflowInstanceName));
+                        throwable -> handleFailureResponse(
+                                taskInstance,
+                                throwable));
+
+        notifyDeciderActor(taskInstance);
+        notifyReporterActor(taskInstance);
     }
 
-    private void handleSuccessResponse(Task task, String workflowInstanceName, TaskInstance taskInstance, String response) {
+    private void handleSuccessResponse(TaskInstance taskInstance, String response) {
         taskInstance.setResponse(response);
-        contextualInputRepository.saveLocalInput(workflowInstanceName, buildContextualInput(taskInstance));
+        contextualInputRepository.saveLocalInput(taskInstance.getWorkflowInstanceName(), buildContextualInput(taskInstance));
         sendEvent(new DeciderActor.TaskCompletedEvent(
-                task.getWorkflowName(),
-                workflowInstanceName,
-                task.getName()));
+                taskInstance.getWorkflowName(),
+                taskInstance.getWorkflowInstanceName(),
+                taskInstance.getTaskName()));
         sendEvent(new ReporterActor.ReportTaskCompletedEvent(
-                task.getWorkflowName(),
-                workflowInstanceName,
-                task.getName(),
-                taskInstance.getTaskInstanceName()));
+                taskInstance.getWorkflowName(),
+                taskInstance.getWorkflowInstanceName(),
+                taskInstance.getTaskName(),
+                taskInstance.getTaskInstanceName(),
+                response));
     }
 
-    private void handleFailureResponse(Task task, String workflowInstanceName, TaskInstance taskInstance, Throwable throwable) {
+    private void handleFailureResponse(TaskInstance taskInstance, Throwable throwable) {
         taskInstance.setFailure(throwable);
-        contextualInputRepository.saveLocalInput(workflowInstanceName, buildContextualInput(taskInstance));
-        sendEvent(new DeciderActor.TaskFailedEvent(task.getName(), taskInstance.getTaskInstanceName(), task.getWorkflowName()));
-        sendEvent(new ReporterActor.ReportTaskFailedEvent(task.getName(), taskInstance.getTaskInstanceName(), task.getWorkflowName(), workflowInstanceName));
+        contextualInputRepository.saveLocalInput(taskInstance.getWorkflowInstanceName(), buildContextualInput(taskInstance));
+        sendEvent(new DeciderActor.TaskFailedEvent(
+                taskInstance.getWorkflowName(),
+                taskInstance.getWorkflowInstanceName(),
+                taskInstance.getTaskName()));
+        sendEvent(new ReporterActor.ReportTaskFailedEvent(
+                taskInstance.getWorkflowName(),
+                taskInstance.getWorkflowInstanceName(),
+                taskInstance.getTaskName(),
+                taskInstance.getTaskInstanceName(),
+                throwable));
     }
 
     private ContextualInput buildContextualInput(TaskInstance taskInstance) {
@@ -216,12 +233,29 @@ public class TaskExecutorService {
         }
     }
 
-    private TaskInstance buildTaskInstance(Task task) {
+    private TaskInstance buildTaskInstance(Task task, String workflowInstanceName) {
         String taskInstanceName = UUID.randomUUID().toString();
         TaskInstance taskInstance = new TaskInstance();
+        taskInstance.setWorkflowName(task.getWorkflowName());
+        taskInstance.setWorkflowInstanceName(workflowInstanceName);
         taskInstance.setTaskName(task.getName());
         taskInstance.setTaskInstanceName(taskInstanceName);
         return taskInstance;
+    }
+
+    private void notifyDeciderActor(TaskInstance taskInstance) {
+        sendEvent(new DeciderActor.TaskStartedEvent(
+                taskInstance.getWorkflowName(),
+                taskInstance.getWorkflowInstanceName(),
+                taskInstance.getTaskName()));
+    }
+
+    private void notifyReporterActor(TaskInstance taskInstance) {
+        sendEvent(new ReporterActor.ReportTaskStartedEvent(
+                taskInstance.getWorkflowName(),
+                taskInstance.getWorkflowInstanceName(),
+                taskInstance.getTaskName(),
+                taskInstance.getTaskInstanceName()));
     }
 
     private void sendEvent(DeciderActor.TaskEvent taskEvent) {
