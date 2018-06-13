@@ -1,0 +1,46 @@
+workflow checkoutProcess {
+	task getShoppingCart {
+		get("http://shopping-cart-service/v1/cart/orchestrated")
+		    .header("Authorization", "${access_token}")
+	}
+	task checkAvailableInventory {
+		post("http://inventory-service/v1/inventory/checkavailable/orchestrated")
+		    .header("Authorization", "${access_token}")
+			.body("${getShoppingCart.response}")
+	}
+	task createNewOrder {
+		post("http://order-service/v1/orders/orchestrated")
+		    .header("Authorization", "${access_token}")
+			.body("${checkAvailableInventory.response}")
+	}
+	task createSuccessfulOrderEvent {
+		post("http://order-service/v1/orders/orchestrated")
+		    .header("Authorization", "${access_token}")
+			.body("${createNewOrder.response}")
+	}
+	task clearShoppingCart {
+		post("http://shopping-cart-service/v1/cart/clear/orchestrated")
+		    .header("Authorization", "${access_token}")
+	}
+	handler h1 {
+		on WORKFLOW_SCHEDULED
+		when workflowNameEqualsTo("checkoutProcess")
+		then startTask("getShoppingCart")
+	}
+	handler h2 {
+		on TASK_COMPLETED
+		when taskNameEqualsTo("getShoppingCart")
+		then startTask("checkAvailableInventory")
+	}
+	handler h3 {
+		on TASK_COMPLETED
+		when taskNameEqualsTo("checkAvailableInventory")
+		then startTask("createNewOrder")
+	}
+	handler h4 {
+		on TASK_COMPLETED
+		when taskNameEqualsTo("createNewOrder")
+		then startTask("clearShoppingCart"),
+		     startTask("createSuccessfulOrderEvent")
+	}
+}
