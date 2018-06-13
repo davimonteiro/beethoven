@@ -63,7 +63,6 @@ public class ContextualInputRepository {
 
     public void saveLocalInput(@NonNull String workflowInstanceName, @NonNull ContextualInput input) {
         Set<ContextualInput> inputs = localInputs.get(workflowInstanceName);
-
         if (inputs != null && !inputs.isEmpty()) {
             inputs.add(input);
         }

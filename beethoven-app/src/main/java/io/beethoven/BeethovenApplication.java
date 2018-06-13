@@ -38,7 +38,6 @@ import org.springframework.context.ApplicationContext;
 @SpringBootApplication(exclude = EurekaClientAutoConfiguration.class)
 public class BeethovenApplication {
 
-
     public static void main(String... args) throws Exception {
         ApplicationContext context = SpringApplication.run(BeethovenApplication.class, args);
         ActorSystem actorSystem = context.getBean(ActorSystem.class);
