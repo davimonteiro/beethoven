@@ -33,6 +33,7 @@ import io.beethoven.repository.WorkflowRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
+import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
@@ -43,6 +44,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static akka.actor.ActorRef.noSender;
+import static io.beethoven.engine.WorkflowInstance.*;
+import static java.util.Objects.nonNull;
 
 /**
  * @author Davi Monteiro
@@ -85,111 +88,147 @@ public class ReporterActor extends AbstractLoggingActor {
         log().debug("onReportWorkflowScheduledEvent: " + reportWorkflowScheduledEvent);
 
         Workflow workflow = workflowRepository.findByName(reportWorkflowScheduledEvent.getWorkflowName());
-
-        WorkflowInstance workflowInstance = new WorkflowInstance(reportWorkflowScheduledEvent);
-        workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.SCHEDULED);
-        workflowInstance.setCountTasks(workflow.getTasks().size());
-
-        instances.put(reportWorkflowScheduledEvent.getWorkflowInstanceName(), workflowInstance);
+        if (nonNull(workflow)) {
+            WorkflowInstance workflowInstance = new WorkflowInstance(reportWorkflowScheduledEvent);
+            workflowInstance.setStatus(WorkflowStatus.SCHEDULED);
+            workflowInstance.setCountTasks(workflow.getTasks().size());
+            instances.put(reportWorkflowScheduledEvent.getWorkflowInstanceName(), workflowInstance);
+        }
     }
 
     private void onReportWorkflowStartedEvent(ReportWorkflowStartedEvent reportWorkflowStartedEvent) {
         log().debug("onReportWorkflowStartedEvent: " + reportWorkflowStartedEvent);
+
         WorkflowInstance workflowInstance = instances.get(reportWorkflowStartedEvent.getWorkflowInstanceName());
-        workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.RUNNING);
-        workflowInstance.setStartTime(LocalDateTime.now());
+        if (nonNull(workflowInstance)) {
+            workflowInstance.setStatus(WorkflowStatus.RUNNING);
+            workflowInstance.setStartTime(LocalDateTime.now());
+        }
     }
 
     private void onReportWorkflowStoppedEvent(ReportWorkflowStoppedEvent reportWorkflowStoppedEvent) {
         log().debug("onReportWorkflowStoppedEvent: " + reportWorkflowStoppedEvent);
+
         WorkflowInstance workflowInstance = instances.get(reportWorkflowStoppedEvent.getWorkflowInstanceName());
-        workflowInstance.setEndTime(LocalDateTime.now());
-        report(reportWorkflowStoppedEvent);
+        if (nonNull(workflowInstance)) {
+            workflowInstance.setEndTime(LocalDateTime.now());
+            report(reportWorkflowStoppedEvent);
+        }
     }
 
     private void onReportWorkflowCompletedEvent(ReportWorkflowCompletedEvent reportWorkflowCompletedEvent) {
         log().debug("onReportWorkflowCompletedEvent: " + reportWorkflowCompletedEvent);
+
         WorkflowInstance workflowInstance = instances.get(reportWorkflowCompletedEvent.getWorkflowInstanceName());
-        workflowInstance.setEndTime(LocalDateTime.now());
-        report(reportWorkflowCompletedEvent);
+        if (nonNull(workflowInstance)) {
+            workflowInstance.setEndTime(LocalDateTime.now());
+            report(reportWorkflowCompletedEvent);
+        }
     }
 
     private void onReportWorkflowCanceledEvent(ReportWorkflowCanceledEvent reportWorkflowCanceledEvent) {
         log().debug("onReportWorkflowCanceledEvent: " + reportWorkflowCanceledEvent);
+
         WorkflowInstance workflowInstance = instances.get(reportWorkflowCanceledEvent.getWorkflowInstanceName());
-        workflowInstance.setEndTime(LocalDateTime.now());
-        report(reportWorkflowCanceledEvent);
+        if (nonNull(workflowInstance)) {
+            workflowInstance.setEndTime(LocalDateTime.now());
+            report(reportWorkflowCanceledEvent);
+        }
     }
 
     private void onReportWorkflowFailedEvent(ReportWorkflowFailedEvent reportWorkflowFailedEvent) {
         log().debug("onReportWorkflowFailedEvent: " + reportWorkflowFailedEvent);
+
         WorkflowInstance workflowInstance = instances.get(reportWorkflowFailedEvent.getWorkflowInstanceName());
-        workflowInstance.setEndTime(LocalDateTime.now());
-        report(reportWorkflowFailedEvent);
+        if (nonNull(workflowInstance)) {
+            workflowInstance.setEndTime(LocalDateTime.now());
+            report(reportWorkflowFailedEvent);
+        }
     }
 
     private void onReportTaskStartedEvent(ReportTaskStartedEvent reportTaskStartedEvent) {
         log().debug("onReportTaskStartedEvent: " + reportTaskStartedEvent);
 
         WorkflowInstance workflowInstance = instances.get(reportTaskStartedEvent.getWorkflowInstanceName());
-        if (workflowInstance.getStatus().equals(WorkflowInstance.WorkflowStatus.SCHEDULED)) {
-            self().tell(new ReportWorkflowStartedEvent(
-                    reportTaskStartedEvent.getWorkflowName(),
-                    reportTaskStartedEvent.getWorkflowInstanceName()), noSender());
+        if (nonNull(workflowInstance)) {
+            TaskInstance taskInstance = new TaskInstance(reportTaskStartedEvent);
+            taskInstance.setStartTime(LocalDateTime.now());
+            workflowInstance.getTasks().put(taskInstance.getTaskInstanceName(), taskInstance);
+            checkScheduledWorkflow(workflowInstance);
         }
-
-        TaskInstance taskInstance = new TaskInstance(reportTaskStartedEvent);
-        taskInstance.setStartTime(LocalDateTime.now());
-        workflowInstance.getTasks().put(taskInstance.getTaskInstanceName(), taskInstance);
-
-        report(reportTaskStartedEvent);
     }
 
     private void onReportTaskCompletedEvent(ReportTaskCompletedEvent reportTaskCompletedEvent) {
         log().debug("onReportTaskCompletedEvent: " + reportTaskCompletedEvent);
-        instances.get(reportTaskCompletedEvent.getWorkflowInstanceName())
-                .getTasks().get(reportTaskCompletedEvent.getTaskInstanceName())
-                .setEndTime(LocalDateTime.now());
-        report(reportTaskCompletedEvent);
 
         WorkflowInstance workflowInstance = instances.get(reportTaskCompletedEvent.getWorkflowInstanceName());
-        if (workflowInstance.isTerminated()) {
-            self().tell(new ReportWorkflowCompletedEvent(
-                    reportTaskCompletedEvent.getWorkflowName(),
-                    reportTaskCompletedEvent.getWorkflowInstanceName()), noSender());
+        if (nonNull(workflowInstance)) {
+            TaskInstance taskInstance = workflowInstance.getTasks().get(reportTaskCompletedEvent.getTaskInstanceName());
+            if (nonNull(taskInstance)) {
+                taskInstance.setEndTime(LocalDateTime.now());
+                taskInstance.setResponse(reportTaskCompletedEvent.response);
+                taskInstance.print();
+            }
+            checkCompletedWorkflow(workflowInstance);
         }
     }
 
     private void onReportTaskTimeoutEvent(ReportTaskTimeoutEvent reportTaskTimeoutEvent) {
         log().debug("onReportTaskTimeoutEvent" + reportTaskTimeoutEvent);
-        instances.get(reportTaskTimeoutEvent.getWorkflowInstanceName())
-                .getTasks().get(reportTaskTimeoutEvent.getTaskInstanceName())
-                .setEndTime(LocalDateTime.now());
-        report(reportTaskTimeoutEvent);
+
+        WorkflowInstance workflowInstance = instances.get(reportTaskTimeoutEvent.getWorkflowInstanceName());
+        if (nonNull(workflowInstance)) {
+            TaskInstance taskInstance = workflowInstance.getTasks().get(reportTaskTimeoutEvent.getTaskInstanceName());
+            if (nonNull(taskInstance)) {
+                taskInstance.setEndTime(LocalDateTime.now());
+                taskInstance.print();
+            }
+        }
     }
 
     private void onReportTaskFailedEvent(ReportTaskFailedEvent reportTaskFailedEvent) {
         log().debug("onReportTaskFailedEvent" + reportTaskFailedEvent);
-        instances.get(reportTaskFailedEvent.getWorkflowInstanceName())
-                .getTasks().get(reportTaskFailedEvent.getTaskInstanceName())
-                .setEndTime(LocalDateTime.now());
-        report(reportTaskFailedEvent);
+
+        WorkflowInstance workflowInstance = instances.get(reportTaskFailedEvent.getWorkflowInstanceName());
+        if (nonNull(workflowInstance)) {
+            TaskInstance taskInstance = workflowInstance.getTasks().get(reportTaskFailedEvent.getTaskInstanceName());
+            if (nonNull(taskInstance)) {
+                taskInstance.setEndTime(LocalDateTime.now());
+                taskInstance.setFailure(reportTaskFailedEvent.failure);
+                taskInstance.print();
+            }
+        }
+    }
+
+    private void report(ReportWorkflowEvent reportWorkflowEvent) {
+        log().debug("ReportWorkflowEvent" + reportWorkflowEvent);
+
+        WorkflowInstance workflowInstance = instances.get(reportWorkflowEvent.workflowInstanceName);
+        if (nonNull(workflowInstance)) {
+            workflowInstance.print();
+            clearWorkflowInstanceResources(workflowInstance);
+        }
+    }
+
+    private void checkScheduledWorkflow(@NonNull WorkflowInstance workflowInstance) {
+        if (workflowInstance.getStatus().equals(WorkflowStatus.SCHEDULED)) {
+            self().tell(new ReportWorkflowStartedEvent(
+                    workflowInstance.getWorkflowName(),
+                    workflowInstance.getWorkflowInstanceName()), noSender());
+        }
+    }
+
+    private void checkCompletedWorkflow(@NonNull WorkflowInstance workflowInstance) {
+        if (workflowInstance.isTerminated()) {
+            self().tell(new ReportWorkflowCompletedEvent(
+                    workflowInstance.getWorkflowName(),
+                    workflowInstance.getWorkflowInstanceName()), noSender());
+        }
     }
 
     private void clearWorkflowInstanceResources(WorkflowInstance workflowInstance) {
         contextualInputRepository.deleteLocalContextualInput(workflowInstance.getWorkflowInstanceName());
         instances.remove(workflowInstance.getWorkflowInstanceName());
-    }
-
-    private void report(ReportTaskEvent reportTaskEvent) {
-        TaskInstance taskInstance = instances.get(reportTaskEvent.workflowInstanceName).getTasks().get(reportTaskEvent.taskInstanceName);
-        taskInstance.print();
-    }
-
-    private void report(ReportWorkflowEvent reportWorkflowEvent) {
-        WorkflowInstance workflowInstance = instances.get(reportWorkflowEvent.workflowInstanceName);
-        workflowInstance.print();
-        clearWorkflowInstanceResources(workflowInstance);
     }
 
     /**
@@ -268,7 +307,9 @@ public class ReporterActor extends AbstractLoggingActor {
     }
 
     public static class ReportTaskCompletedEvent extends ReportTaskEvent {
-        @Getter private String response;
+        @Getter
+        private String response;
+
         public ReportTaskCompletedEvent(String workflowName, String workflowInstanceName, String taskName, String taskInstanceName, String response) {
             super(workflowName, workflowInstanceName, taskName, taskInstanceName);
             this.response = response;
@@ -282,7 +323,9 @@ public class ReporterActor extends AbstractLoggingActor {
     }
 
     public static class ReportTaskFailedEvent extends ReportTaskEvent {
-        @Getter private Throwable failure;
+        @Getter
+        private Throwable failure;
+
         public ReportTaskFailedEvent(String workflowName, String workflowInstanceName, String taskName, String taskInstanceName, Throwable failure) {
             super(workflowName, workflowInstanceName, taskName, taskInstanceName);
             this.failure = failure;

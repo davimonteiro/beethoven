@@ -26,16 +26,21 @@ import io.beethoven.engine.core.ReporterActor;
 import io.beethoven.engine.core.support.WorkflowInstanceActor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 /**
  * @author Davi Monteiro
  */
-@Data @NoArgsConstructor
+@Data
+@NoArgsConstructor
 public class WorkflowInstance {
 
     private String workflowName;
@@ -46,33 +51,38 @@ public class WorkflowInstance {
     private WorkflowStatus status;
     private int countTasks;
 
-    public WorkflowInstance(WorkflowInstanceActor.WorkflowInstanceCommand workflowInstanceCommand) {
+    public WorkflowInstance(@NonNull WorkflowInstanceActor.WorkflowInstanceCommand workflowInstanceCommand) {
         this.workflowName = workflowInstanceCommand.getWorkflowName();
         this.workflowInstanceName = workflowInstanceCommand.getWorkflowInstanceName();
     }
 
-    public WorkflowInstance(ReporterActor.ReportWorkflowEvent reportWorkflowEvent) {
+    public WorkflowInstance(@NonNull ReporterActor.ReportWorkflowEvent reportWorkflowEvent) {
         this.workflowName = reportWorkflowEvent.getWorkflowName();
         this.workflowInstanceName = reportWorkflowEvent.getWorkflowInstanceName();
     }
 
     public Duration elapsedTime() {
-        Duration duration = Duration.between(startTime, endTime);
+        Duration duration = Duration.ZERO;
+        if (nonNull(startTime) && nonNull(endTime)) {
+            duration = Duration.between(startTime, endTime);
+        }
         return duration.abs();
     }
 
     public boolean isTerminated() {
-        int count = 0;
-        for (TaskInstance taskInstance : tasks.values()) {
-            if (taskInstance.isTerminated()) count++;
-        }
-        return countTasks == count;
+        return countTasks == tasks.values().stream().filter(TaskInstance::isTerminated).count();
+    }
+
+    public boolean isSuccessfullyExecuted() {
+        return isTerminated() && tasks.values().stream().filter(TaskInstance::isSuccessfullyExecuted).count() == countTasks;
     }
 
     public void print() {
         System.err.println("Workflow name: " + workflowName);
         System.err.println("Instance name: " + workflowInstanceName);
         System.err.println("Execution time: " + elapsedTime().toMillis() + " milliseconds");
+        System.err.println("Success: " + isSuccessfullyExecuted());
+        //tasks.values().forEach(TaskInstance::print);
     }
 
     public enum WorkflowStatus {

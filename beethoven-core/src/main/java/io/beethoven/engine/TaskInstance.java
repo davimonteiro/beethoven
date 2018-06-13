@@ -25,17 +25,20 @@ package io.beethoven.engine;
 import io.beethoven.engine.core.ReporterActor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 /**
  * @author Davi Monteiro
  */
-@Data @NoArgsConstructor
+@Data
+@NoArgsConstructor
 public class TaskInstance {
 
     private String workflowName;
@@ -47,8 +50,7 @@ public class TaskInstance {
     private String response;
     private Throwable failure;
 
-    public TaskInstance(ReporterActor.ReportTaskEvent reportTaskEvent) {
-        requireNonNull(reportTaskEvent);
+    public TaskInstance(@NonNull ReporterActor.ReportTaskEvent reportTaskEvent) {
         this.workflowName = reportTaskEvent.getWorkflowName();
         this.workflowInstanceName = reportTaskEvent.getWorkflowInstanceName();
         this.taskName = reportTaskEvent.getTaskName();
@@ -56,9 +58,10 @@ public class TaskInstance {
     }
 
     public Duration elapsedTime() {
-        requireNonNull(startTime);
-        requireNonNull(endTime);
-        Duration duration = Duration.between(startTime, endTime);
+        Duration duration = Duration.ZERO;
+        if (nonNull(startTime) && nonNull(endTime)) {
+            duration = Duration.between(startTime, endTime);
+        }
         return duration.abs();
     }
 
@@ -66,9 +69,14 @@ public class TaskInstance {
         return nonNull(startTime) && nonNull(endTime);
     }
 
+    public boolean isSuccessfullyExecuted() {
+        return isNull(failure);
+    }
+
     public void print() {
+        System.err.println("Task name: " + taskName);
         System.err.println("Task instance name: " + taskInstanceName);
-        System.err.println("Execution time: " + elapsedTime().getSeconds() + " seconds");
+        System.err.println("Execution time: " + elapsedTime().toMillis() + " milliseconds");
         if (nonNull(response)) System.err.println("Response: " + response);
         if (nonNull(failure)) System.err.println("Failure: " + failure.getMessage());
     }
