@@ -26,13 +26,13 @@ import io.beethoven.dsl.ContextualInput;
 import lombok.NonNull;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.util.Objects.*;
+import static java.util.Objects.nonNull;
 
 /**
  * @author Davi Monteiro
@@ -62,10 +62,8 @@ public class ContextualInputRepository {
     }
 
     public void saveLocalInput(@NonNull String workflowInstanceName, @NonNull ContextualInput input) {
-        Set<ContextualInput> inputs = localInputs.get(workflowInstanceName);
-        if (inputs != null && !inputs.isEmpty()) {
-            inputs.add(input);
-        }
+        Set<ContextualInput> inputs = localInputs.computeIfAbsent(workflowInstanceName, k -> new HashSet<>());
+        inputs.add(input);
     }
 
     public Optional<ContextualInput> findLocalContextualInput(@NonNull String workflowInstanceName, @NonNull String key) {
