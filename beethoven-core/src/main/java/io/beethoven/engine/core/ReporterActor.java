@@ -44,7 +44,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static akka.actor.ActorRef.noSender;
-import static io.beethoven.engine.WorkflowInstance.*;
+import static io.beethoven.engine.WorkflowInstance.WorkflowStatus;
 import static java.util.Objects.nonNull;
 
 /**
@@ -183,6 +183,7 @@ public class ReporterActor extends AbstractLoggingActor {
                 taskInstance.setEndTime(LocalDateTime.now());
                 taskInstance.print();
             }
+            checkCompletedWorkflow(workflowInstance);
         }
     }
 
@@ -197,6 +198,7 @@ public class ReporterActor extends AbstractLoggingActor {
                 taskInstance.setFailure(reportTaskFailedEvent.failure);
                 taskInstance.print();
             }
+            checkCompletedWorkflow(workflowInstance);
         }
     }
 
